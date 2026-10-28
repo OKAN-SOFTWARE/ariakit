@@ -97,6 +97,7 @@ export const useMenuButton = createHook<TagName, MenuButtonOptions>(
     );
 
     const ref = useRef<HTMLElement>(null);
+    const pointerDownRef = useRef(false);
     const parentMenu = store.parent;
     const parentMenubar = store.menubar;
     const hasParentMenu = !!parentMenu;
@@ -112,9 +113,27 @@ export const useMenuButton = createHook<TagName, MenuButtonOptions>(
       store?.show();
     };
 
+    const onMouseDownProp = props.onMouseDown;
+
+    const onMouseDown = useEvent((event: MouseEvent<HTMLType>) => {
+      onMouseDownProp?.(event as any);
+      if (event.defaultPrevented) return;
+      if (!parentIsMenubar) return;
+      if (event.button !== 0 || event.ctrlKey) return;
+      pointerDownRef.current = true;
+    });
+
+    const onBlurProp = props.onBlur;
+    const onBlur = useEvent((event: FocusEvent<HTMLType>) => {
+      pointerDownRef.current = false;
+      onBlurProp?.(event as any);
+    });
+
     const onFocusProp = props.onFocus;
 
     const onFocus = useEvent((event: FocusEvent<HTMLType>) => {
+      const pointerDown = pointerDownRef.current;
+      pointerDownRef.current = false;
       onFocusProp?.(event as any);
       if (isDisabled(event.currentTarget)) return;
       if (event.defaultPrevented) return;
@@ -128,6 +147,7 @@ export const useMenuButton = createHook<TagName, MenuButtonOptions>(
       // menu bar
       if (!parentMenubar) return;
       if (!parentIsMenubar) return;
+      if (pointerDown) return;
       const { items } = parentMenubar.getState();
       // and there's already another expanded menu button or the previously
       // focused element is another menu item.
@@ -164,6 +184,7 @@ export const useMenuButton = createHook<TagName, MenuButtonOptions>(
     const onClickProp = props.onClick;
 
     const onClick = useEvent((event: MouseEvent<HTMLType>) => {
+      pointerDownRef.current = false;
       onClickProp?.(event as any);
       if (event.defaultPrevented) return;
       if (!store) return;
@@ -238,6 +259,8 @@ export const useMenuButton = createHook<TagName, MenuButtonOptions>(
       ...props,
       id,
       ref: useMergeRefs(ref, props.ref),
+      onMouseDown,
+      onBlur,
       onFocus,
       onKeyDown,
       onClick,
